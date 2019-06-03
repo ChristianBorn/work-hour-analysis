@@ -2,8 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import sqlite3
-import locale
-from locale import atof
+
 import pandas
 
 
@@ -68,23 +67,25 @@ def process_ticket_information(df_to_import_raw):
 
     df_to_import_unique_tickets.to_sql(name='tickets', con=sqlite3.connect('../Database/main_data.db'),
                                        if_exists='replace')
-    print('Zahl neuer Tickets: {new_tickets}'.format(new_tickets=len(df_to_import_unique_tickets)-len(previous_tickets)))
+    print('Zahl neuer Tickets: {new_tickets}'.format(
+        new_tickets=len(df_to_import_unique_tickets) - len(previous_tickets)))
 
 
 def export_unique_tickets():
     unique_tickets = pandas.read_sql('SELECT * FROM tickets', sqlite3.connect('../Database/main_data.db'))
     unique_tickets.drop('index', axis=1)
-    unique_tickets.to_excel('Aktuelle_Tickets.xlsx', columns=['ticketnummer', 'beschreibung', 'kalkuliert'], float_format="%0.2f")
+    unique_tickets.to_excel('Aktuelle_Tickets.xlsx', columns=['ticketnummer', 'beschreibung', 'kalkuliert'],
+                            float_format="%0.2f")
 
 
 def import_calculated(connection_details, file_name=''):
     tickets = pandas.read_excel(file_name, usecols=[1, 2, 3], convert_float=False)
-    #Todo: Conversion of Comma in floats
-    #tickets['kalkuliert'] = tickets['kalkuliert'].to_string()
-    #tickets['kalkuliert'] = [x.replace(',', '.') for x in tickets['kalkuliert']]
-    #tickets['kalkuliert'].replace(',', '.', inplace=True)
-    #pandas.to_numeric(tickets['kalkuliert'])
-    #tickets['kalkuliert'] = tickets['kalkuliert'].str.replace(',', '.').astype(float)
+    # Todo: Conversion of Comma in floats
+    # tickets['kalkuliert'] = tickets['kalkuliert'].to_string()
+    # tickets['kalkuliert'] = [x.replace(',', '.') for x in tickets['kalkuliert']]
+    # tickets['kalkuliert'].replace(',', '.', inplace=True)
+    # pandas.to_numeric(tickets['kalkuliert'])
+    # tickets['kalkuliert'] = tickets['kalkuliert'].str.replace(',', '.').astype(float)
 
     sql_collection = []
     for index, row in tickets.iterrows():
@@ -92,6 +93,23 @@ def import_calculated(connection_details, file_name=''):
     sql_statement = "UPDATE tickets SET kalkuliert=? WHERE ticketnummer=?"
     connection_details['Cursor'].executemany(sql_statement, sql_collection)
     connection_details['Connection'].commit()
+
+
+def analysis():
+    spent_hours = pandas.read_sql(
+        'SELECT '
+        'buchungen.ticketnummer, buchungen.beschreibung, SUM(stunden) as "Bisher geleistet", '
+        'kalkuliert,tickets.kalkuliert - SUM(stunden) as "Differenz" '
+        'FROM '
+        'buchungen,tickets '
+        'WHERE '
+        'buchungen.ticketnummer=tickets.ticketnummer GROUP BY buchungen.ticketnummer ',
+        sqlite3.connect('../Database/main_data.db'))
+    print(spent_hours)
+    spent_hours.to_excel('Auswertung.xlsx', columns=['ticketnummer', 'beschreibung',
+                                                     'Bisher geleistet', 'kalkuliert',
+                                                     'Differenz'],
+                            float_format="%0.2f")
 
 
 def start_import(file_name=''):
@@ -123,9 +141,13 @@ def start_import(file_name=''):
     if user_input == 'ja':
         export_unique_tickets()
         print('[+] Export erstellt!')
-    user_input = input('[?] Unter welchem Pfad liegen die kalkulierten Tickets? (Falls kein Import gewünscht, Enter drücken)\n')
+    user_input = input(
+        '[?] Unter welchem Pfad liegen die kalkulierten Tickets? (Falls kein Import gewünscht, Enter drücken)\n')
     if user_input:
         import_calculated(connection_details, user_input)
+    user_input = input('[?] Soll eine Auswertung erstellt werden? (ja/nein)\n')
+    if user_input == 'ja':
+        analysis()
 
 
 def main():
