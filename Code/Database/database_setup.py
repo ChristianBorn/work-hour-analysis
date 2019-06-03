@@ -3,7 +3,7 @@
 
 import sqlite3
 
-
+#todo: Enforce Foreign KEys
 def create_tables():
     conn = sqlite3.connect('main_data.db')
     c = conn.cursor()
@@ -12,7 +12,7 @@ def create_tables():
     c.execute('''CREATE TABLE tickets
                         (ticketnummer TEXT,
                         beschreibung TEXT,
-                        kalkuliert REAL DEFAULT 0
+                        kalkuliert REAL NOT NULL DEFAULT 0
                         )''')
     c.execute('''DROP TABLE if exists buchungen''')
     print('[+] Creating table buchungen')
@@ -20,8 +20,7 @@ def create_tables():
                 (ticketnummer TEXT,
                 beschreibung TEXT,
                 monat TEXT,
-                stunden REAL,
-                FOREIGN KEY(ticketnummer) REFERENCES tickets(ticketnummer) ON DELETE CASCADE
+                stunden REAL
                 )''')
     conn.commit()
     conn.close()
