@@ -44,7 +44,7 @@ def process_raw_data(data, connection_details):
                                          'monat': data['Datum'].astype(str),
                                          'stunden': data['Geleistete\nStunden']
                                          })
-    check_if_exists('monat', 'buchungen', df_to_import_raw['monat'][0], connection_details['Connection'],
+    check_if_exists('monat', 'buchungen', df_to_import_raw['monat'].iat[0], connection_details['Connection'],
                     connection_details['Cursor'])
     for index, row in df_to_import_raw.iterrows():
         insert_values_into('buchungen', row.to_list(), connection_details['Connection'], connection_details['Cursor'])
@@ -105,7 +105,6 @@ def analysis():
         'WHERE '
         'buchungen.ticketnummer=tickets.ticketnummer GROUP BY buchungen.ticketnummer ',
         sqlite3.connect('../Database/main_data.db'))
-    print(spent_hours)
     spent_hours.to_excel('Auswertung.xlsx', columns=['ticketnummer', 'beschreibung',
                                                      'Bisher geleistet', 'kalkuliert',
                                                      'Differenz'],
@@ -119,7 +118,7 @@ def start_import(file_name=''):
         file_name = input('[?] Unter welchem Pfad liegt die letzte Auswertung?\n')
         if not file_name:
             break
-        data = pandas.read_excel(file_name, sheet_name='Tabelle1')
+        data = pandas.read_excel(file_name, sheet_name=0)
 
         # Drop rows with empty Hinweis
         data.dropna(subset=['Hinweis'], inplace=True)
