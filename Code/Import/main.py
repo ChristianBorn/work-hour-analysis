@@ -60,11 +60,11 @@ def process_ticket_information(df_to_import_raw):
 
     # Add column for calculated work hours
     df_to_import_unique_tickets['kalkuliert'] = 0.0
-    # Find the difference between previous and possibly new tickets
-    df_to_import_unique_tickets = pandas.concat([df_to_import_unique_tickets, previous_tickets], ignore_index=True,
-                                                sort=False) \
-        .drop_duplicates(subset=['ticketnummer']).drop('index', axis=1)
-
+    # Find the difference between previous and possibly new tickets, if there are previous tickets
+    if not previous_tickets.empty:
+        df_to_import_unique_tickets = pandas.concat([df_to_import_unique_tickets, previous_tickets], ignore_index=True,
+                                                    sort=False) \
+            .drop_duplicates(subset=['ticketnummer']).drop('index', axis=1)
     df_to_import_unique_tickets.to_sql(name='tickets', con=sqlite3.connect('../Database/main_data.db'),
                                        if_exists='replace')
     print('Zahl neuer Tickets: {new_tickets}'.format(
@@ -131,7 +131,7 @@ def start_import(file_name=''):
 
         # Process ticket information
         process_ticket_information(df_to_import_raw)
-
+        break
         print('[+] Import erfolgreich abgeschlossen')
         user_input = input('[?] Noch eine Datei? (ja/nein)\n')
         if user_input.lower() != 'ja':
