@@ -4,6 +4,8 @@
 import sqlite3
 import datetime
 import pandas
+import time
+import traceback
 
 
 def connect_to_db(db):
@@ -120,51 +122,69 @@ def analysis():
 
 
 def start_import(file_name=''):
-    more_data = True
+
     connection_details = connect_to_db('../Database/main_data.db')
-    while more_data == True:
+    while True:
         file_name = input('[?] Unter welchem Pfad liegt die letzte Auswertung?\n')
+
         if not file_name:
             break
+        try:
+            data = pandas.read_excel(file_name, sheet_name=0)
+            if 'Ticketnummer' in data.columns:
+                col_tickets = 'Ticketnummer'
+            else:
+                col_tickets = 'Hinweis'
 
-        data = pandas.read_excel(file_name, sheet_name=0)
-        if 'Ticketnummer' in data.columns:
-            col_tickets = 'Ticketnummer'
-        else:
-            col_tickets = 'Hinweis'
+            # Drop rows with empty Hinweis
+            data.dropna(subset=[col_tickets], inplace=True)
 
-        # Drop rows with empty Hinweis
-        data.dropna(subset=[col_tickets], inplace=True)
+            # Filter for Ticketnumbers only and clean
+            data = data[data[col_tickets].str.startswith(('BAB', 'AARE'))]
 
-        # Filter for Ticketnumbers only and clean
-        data = data[data[col_tickets].str.startswith(('BAB', 'AARE'))]
+            # Process raw data and save it for further processing
+            df_to_import_raw = process_raw_data(data, connection_details, col_tickets)
 
-        # Process raw data and save it for further processing
-        df_to_import_raw = process_raw_data(data, connection_details, col_tickets)
+            # Process ticket information
+            process_ticket_information(df_to_import_raw)
+            print('[+] Import erfolgreich abgeschlossen')
 
-        # Process ticket information
-        process_ticket_information(df_to_import_raw)
-        print('[+] Import erfolgreich abgeschlossen')
+            user_input = input('[?] Noch eine Datei? (ja/nein)\n')
+            if user_input.lower() != 'ja':
+                break
+        except FileNotFoundError:
+            print('Ungültiger Dateipfad!')
 
-        user_input = input('[?] Noch eine Datei? (ja/nein)\n')
-        if user_input.lower() != 'ja':
-            more_data = False
     user_input = input('[?] Soll eine  Aufstellung der aktuellen Tickets erstellt werden? (ja/nein)\n')
     if user_input == 'ja':
         export_unique_tickets()
         print('[+] Export erstellt!')
-    user_input = input(
-        '[?] Unter welchem Pfad liegen die kalkulierten Tickets? (Falls kein Import gewünscht, Enter drücken)\n')
-    if user_input:
-        import_calculated(connection_details, user_input)
+
+    while True:
+        user_input = input(
+            '[?] Unter welchem Pfad liegen die kalkulierten Tickets? (Falls kein Import gewünscht, Enter drücken)\n')
+        if not user_input:
+            break
+        try:
+            import_calculated(connection_details, user_input)
+            break
+        except FileNotFoundError:
+            print('Ungültiger Dateipfad!')
     user_input = input('[?] Soll eine Auswertung erstellt werden? (ja/nein)\n')
     if user_input == 'ja':
         analysis()
 
 
 def main():
-    start_import()
-
+    try:
+        start_import()
+        time.sleep(2)
+    except Exception as e:
+        print(e)
+        traceback.print_tb(e.__traceback__)
+        while True:
+            if not input():
+                break
 
 if __name__ == '__main__':
     main()

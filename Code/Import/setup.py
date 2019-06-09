@@ -11,7 +11,7 @@ executables = [Executable("main.py", base=base)]
 packages = ["idna"]
 options = {
     'build_exe': {
-        'packages': ['sqlite3', 'pandas', 'numpy', 'datetime'],
+        'packages': ['sqlite3', 'pandas', 'numpy', 'datetime', 'time', 'traceback'],
     },
 }
 
