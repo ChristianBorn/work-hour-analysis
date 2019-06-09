@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import sqlite3
-
+import datetime
 import pandas
 
 
@@ -74,7 +74,10 @@ def process_ticket_information(df_to_import_raw):
 def export_unique_tickets():
     unique_tickets = pandas.read_sql('SELECT * FROM tickets', sqlite3.connect('../Database/main_data.db'))
     unique_tickets.drop('index', axis=1)
-    unique_tickets.to_excel('Aktuelle_Tickets.xlsx', columns=['ticketnummer', 'beschreibung', 'kalkuliert'],
+    extension = datetime.datetime.today()
+    extension = str(extension.year)+str(extension.month)+str(extension.day)
+    unique_tickets.to_excel('Aktuelle_Tickets_{extension}.xlsx'.format(extension=extension),
+                            columns=['ticketnummer', 'beschreibung', 'kalkuliert'],
                             float_format="%0.2f")
 
 
@@ -131,7 +134,6 @@ def start_import(file_name=''):
 
         # Process ticket information
         process_ticket_information(df_to_import_raw)
-        break
         print('[+] Import erfolgreich abgeschlossen')
         user_input = input('[?] Noch eine Datei? (ja/nein)\n')
         if user_input.lower() != 'ja':
