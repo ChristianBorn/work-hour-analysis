@@ -12,10 +12,15 @@ def connect_to_db(db):
     return {'Connection': conn, 'Cursor': c}
 
 
-def insert_values_into(table_name, value_list, conn, c):
-    values_bracket = '(' + (','.join(['?'] * len(value_list))) + ')'
+def insert_many(table_name, value_list, conn, c):
+    if isinstance(value_list, pandas.core.frame.DataFrame):
+        values_bracket = '(' + (','.join(['?'] * len(value_list.columns))) + ')'
+        value_list = value_list.values.tolist()
+    else:
+        values_bracket = '(' + (','.join(['?'] * len(value_list))) + ')'
+
     sql_statement = "INSERT INTO " + table_name + " VALUES " + values_bracket
-    c.execute(sql_statement, value_list)
+    c.executemany(sql_statement, value_list)
     conn.commit()
 
 
@@ -28,9 +33,9 @@ def check_if_exists(row, table_name, value, conn, c):
         conn.commit()
 
 
-def process_raw_data(data, connection_details):
+def process_raw_data(data, connection_details, col_tickets):
     # Clean Ticket-IDs
-    ticket_information = pandas.Series(data['Hinweis'])
+    ticket_information = pandas.Series(data[col_tickets])
     ticket_information = ticket_information.str.strip()
     ticket_information = ticket_information.str.replace('  ', ' ')
     ticket_information = ticket_information.str.split(' ', n=1, expand=True)
@@ -46,8 +51,8 @@ def process_raw_data(data, connection_details):
                                          })
     check_if_exists('monat', 'buchungen', df_to_import_raw['monat'].iat[0], connection_details['Connection'],
                     connection_details['Cursor'])
-    for index, row in df_to_import_raw.iterrows():
-        insert_values_into('buchungen', row.to_list(), connection_details['Connection'], connection_details['Cursor'])
+    insert_many('buchungen', df_to_import_raw, connection_details['Connection'], connection_details['Cursor'])
+
     print('Buchungen importiert: {number_entries}'.format(number_entries=len(df_to_import_raw)))
     return df_to_import_raw
 
@@ -121,20 +126,26 @@ def start_import(file_name=''):
         file_name = input('[?] Unter welchem Pfad liegt die letzte Auswertung?\n')
         if not file_name:
             break
+
         data = pandas.read_excel(file_name, sheet_name=0)
+        if 'Ticketnummer' in data.columns:
+            col_tickets = 'Ticketnummer'
+        else:
+            col_tickets = 'Hinweis'
 
         # Drop rows with empty Hinweis
-        data.dropna(subset=['Hinweis'], inplace=True)
+        data.dropna(subset=[col_tickets], inplace=True)
 
         # Filter for Ticketnumbers only and clean
-        data = data[data['Hinweis'].str.startswith(('BAB', 'AARE'))]
+        data = data[data[col_tickets].str.startswith(('BAB', 'AARE'))]
 
         # Process raw data and save it for further processing
-        df_to_import_raw = process_raw_data(data, connection_details)
+        df_to_import_raw = process_raw_data(data, connection_details, col_tickets)
 
         # Process ticket information
         process_ticket_information(df_to_import_raw)
         print('[+] Import erfolgreich abgeschlossen')
+
         user_input = input('[?] Noch eine Datei? (ja/nein)\n')
         if user_input.lower() != 'ja':
             more_data = False
