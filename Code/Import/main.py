@@ -89,18 +89,28 @@ def export_unique_tickets():
 
 
 def import_calculated(connection_details, file_name=''):
-    tickets = pandas.read_excel(file_name, usecols=[1, 2, 3], convert_float=False)
+    tickets = pandas.read_excel(file_name, convert_float=False, sheet_name='Themenliste + CRs')
+    sql_collection = []
     # Todo: Conversion of Comma in floats
     # tickets['kalkuliert'] = tickets['kalkuliert'].to_string()
     # tickets['kalkuliert'] = [x.replace(',', '.') for x in tickets['kalkuliert']]
     # tickets['kalkuliert'].replace(',', '.', inplace=True)
     # pandas.to_numeric(tickets['kalkuliert'])
     # tickets['kalkuliert'] = tickets['kalkuliert'].str.replace(',', '.').astype(float)
-
-    sql_collection = []
-    for index, row in tickets.iterrows():
-        sql_collection.append([row['kalkuliert'], row['ticketnummer']])
+    if 'Angeboten Babiel' in tickets.columns:
+        for index, row in tickets.iterrows():
+            if row['Angeboten Babiel'] != 0:
+                # Assumption: If there is a JIRA ticket, work will be registered under it;
+                # OTRS only for communication purposes
+                if not pandas.isna(row['JIRA']):
+                    sql_collection.append([row['Angeboten Babiel']*8, row['JIRA']])
+                elif not pandas.isna((row['OTRS'])):
+                    sql_collection.append([row['Angeboten Babiel']*8, row['OTRS']])
+    else:
+        for index, row in tickets.iterrows():
+            sql_collection.append([row['kalkuliert'], row['ticketnummer']])
     sql_statement = "UPDATE tickets SET kalkuliert=? WHERE ticketnummer=?"
+    print(sql_collection)
     connection_details['Cursor'].executemany(sql_statement, sql_collection)
     connection_details['Connection'].commit()
 
