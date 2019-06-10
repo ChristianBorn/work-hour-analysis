@@ -110,21 +110,31 @@ def import_calculated(connection_details, file_name=''):
         for index, row in tickets.iterrows():
             sql_collection.append([row['kalkuliert'], row['ticketnummer']])
     sql_statement = "UPDATE tickets SET kalkuliert=? WHERE ticketnummer=?"
-    print(sql_collection)
     connection_details['Cursor'].executemany(sql_statement, sql_collection)
     connection_details['Connection'].commit()
 
 
-def analysis():
-    spent_hours = pandas.read_sql(
-        'SELECT '
-        'buchungen.ticketnummer, buchungen.beschreibung, SUM(stunden) as "Bisher geleistet", '
-        'kalkuliert,tickets.kalkuliert - SUM(stunden) as "Differenz" '
-        'FROM '
-        'buchungen,tickets '
-        'WHERE '
-        'buchungen.ticketnummer=tickets.ticketnummer GROUP BY buchungen.ticketnummer ',
-        sqlite3.connect('../Database/main_data.db'))
+def analysis(calculated_only=False):
+
+    if calculated_only == True:
+        sql_statement = 'SELECT ' \
+                        'buchungen.ticketnummer, buchungen.beschreibung, SUM(stunden) as "Bisher geleistet", ' \
+                        'kalkuliert,tickets.kalkuliert - SUM(stunden) as "Differenz" ' \
+                        'FROM ' \
+                        'buchungen,tickets ' \
+                        'WHERE ' \
+                        'buchungen.ticketnummer=tickets.ticketnummer AND tickets.kalkuliert != 0 ' \
+                        'GROUP BY buchungen.ticketnummer '
+    else:
+        sql_statement = 'SELECT ' \
+                        'buchungen.ticketnummer, buchungen.beschreibung, SUM(stunden) as "Bisher geleistet", ' \
+                        'kalkuliert,tickets.kalkuliert - SUM(stunden) as "Differenz" ' \
+                        'FROM ' \
+                        'buchungen,tickets ' \
+                        'WHERE ' \
+                        'buchungen.ticketnummer=tickets.ticketnummer GROUP BY buchungen.ticketnummer '
+
+    spent_hours = pandas.read_sql(sql_statement, sqlite3.connect('../Database/main_data.db'))
     spent_hours.to_excel('Auswertung.xlsx', columns=['ticketnummer', 'beschreibung',
                                                      'Bisher geleistet', 'kalkuliert',
                                                      'Differenz'],
@@ -182,7 +192,11 @@ def start_import(file_name=''):
             print('Ungültiger Dateipfad!')
     user_input = input('[?] Soll eine Auswertung erstellt werden? (ja/nein)\n')
     if user_input == 'ja':
-        analysis()
+        user_input = input('[?] Nur kalkulierte einbeziehen? (ja/nein)\n')
+        if user_input == 'ja':
+            analysis(calculated_only=True)
+        else:
+            analysis(calculated_only=False)
 
 
 def main():
