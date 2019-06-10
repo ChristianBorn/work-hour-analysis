@@ -83,7 +83,7 @@ def export_unique_tickets():
     unique_tickets.drop('index', axis=1)
     extension = datetime.datetime.today()
     extension = str(extension.year)+str(extension.month)+str(extension.day)
-    unique_tickets.to_excel('Aktuelle_Tickets_{extension}.xlsx'.format(extension=extension),
+    unique_tickets.to_excel('../../Data/Aktuelle_Tickets_{extension}.xlsx'.format(extension=extension),
                             columns=['ticketnummer', 'beschreibung', 'kalkuliert'],
                             float_format="%0.2f")
 
@@ -135,7 +135,7 @@ def analysis(calculated_only=False):
                         'buchungen.ticketnummer=tickets.ticketnummer GROUP BY buchungen.ticketnummer '
 
     spent_hours = pandas.read_sql(sql_statement, sqlite3.connect('../Database/main_data.db'))
-    spent_hours.to_excel('Auswertung.xlsx', columns=['ticketnummer', 'beschreibung',
+    spent_hours.to_excel('../../Data/Auswertung.xlsx', columns=['ticketnummer', 'beschreibung',
                                                      'Bisher geleistet', 'kalkuliert',
                                                      'Differenz'],
                             float_format="%0.2f")
