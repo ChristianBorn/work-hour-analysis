@@ -98,6 +98,7 @@ def import_calculated(connection_details, file_name=''):
     # pandas.to_numeric(tickets['kalkuliert'])
     # tickets['kalkuliert'] = tickets['kalkuliert'].str.replace(',', '.').astype(float)
     if 'Angeboten Babiel' in tickets.columns:
+        tickets['Angeboten Babiel'] = tickets['Angeboten Babiel'].fillna(value=0)
         for index, row in tickets.iterrows():
             if row['Angeboten Babiel'] != 0:
                 # Assumption: If there is a JIRA ticket, work will be registered under it;
@@ -107,6 +108,7 @@ def import_calculated(connection_details, file_name=''):
                 elif not pandas.isna((row['OTRS'])):
                     sql_collection.append([row['Angeboten Babiel']*8, row['OTRS']])
     else:
+        tickets['kalkuliert'] = tickets['kalkuliert'].fillna(value=0)
         for index, row in tickets.iterrows():
             sql_collection.append([row['kalkuliert'], row['ticketnummer']])
     sql_statement = "UPDATE tickets SET kalkuliert=? WHERE ticketnummer=?"
@@ -176,7 +178,7 @@ def start_import(file_name=''):
             print('Ungültiger Dateipfad!')
 
     user_input = input('[?] Soll eine  Aufstellung der aktuellen Tickets erstellt werden? (ja/nein)\n')
-    if user_input == 'ja':
+    if user_input.lower() == 'ja':
         export_unique_tickets()
         print('[+] Export erstellt!')
 
@@ -187,13 +189,16 @@ def start_import(file_name=''):
             break
         try:
             import_calculated(connection_details, user_input)
-            break
+            user_input = input(
+                '[?] Soll eine weitere Datei importiert werden? (ja/nein)\n')
+            if user_input.lower() != 'ja':
+                break
         except FileNotFoundError:
             print('Ungültiger Dateipfad!')
     user_input = input('[?] Soll eine Auswertung erstellt werden? (ja/nein)\n')
-    if user_input == 'ja':
+    if user_input.lower() == 'ja':
         user_input = input('[?] Nur kalkulierte einbeziehen? (ja/nein)\n')
-        if user_input == 'ja':
+        if user_input.lower() == 'ja':
             analysis(calculated_only=True)
         else:
             analysis(calculated_only=False)
