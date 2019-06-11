@@ -91,6 +91,7 @@ def export_unique_tickets():
 def import_calculated(connection_details, file_name=''):
     tickets = pandas.read_excel(file_name, convert_float=False, sheet_name='Themenliste + CRs')
     sql_collection = []
+    missing = []
     # Todo: Conversion of Comma in floats
     # tickets['kalkuliert'] = tickets['kalkuliert'].to_string()
     # tickets['kalkuliert'] = [x.replace(',', '.') for x in tickets['kalkuliert']]
@@ -111,9 +112,22 @@ def import_calculated(connection_details, file_name=''):
         tickets['kalkuliert'] = tickets['kalkuliert'].fillna(value=0)
         for index, row in tickets.iterrows():
             sql_collection.append([row['kalkuliert'], row['ticketnummer']])
-    sql_statement = "UPDATE tickets SET kalkuliert=? WHERE ticketnummer=?"
-    connection_details['Cursor'].executemany(sql_statement, sql_collection)
+    # Get difference of tickets from XLS and database
+    sql_statement_get = "SELECT ticketnummer FROM tickets"
+    # New Connection necessary because of application of row_factory
+    sec_conn = connect_to_db('../Database/main_data.db')
+    sec_conn['Connection'].row_factory = lambda cursor, row: row[0]
+    c = sec_conn['Connection'].cursor()
+    result = c.execute(sql_statement_get).fetchall()
+    for elem in sql_collection:
+        if elem[1] not in result:
+            missing.append(elem)
+    with open('kalkuliert_aber_nicht_importiert.txt', 'a') as file:
+        file.write(str(missing)+'\n')
+    sql_statement_update = "UPDATE tickets SET kalkuliert=? WHERE ticketnummer=?"
+    connection_details['Cursor'].executemany(sql_statement_update, sql_collection)
     connection_details['Connection'].commit()
+    print('{number_missing} kalkulierte Tickets konnten nicht zugeordnet werden!'.format(number_missing=len(missing)))
 
 
 def analysis(calculated_only=False):
